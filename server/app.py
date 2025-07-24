@@ -35,17 +35,24 @@ def load_padlet_content(folder='server/padlet_content'):
     return combined
 
 def redact_sensitive_info(text):
-    # Redact emails
-    text = re.sub(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b', '[REDACTED EMAIL]', text)
+    # Redact emails except nyp_sns@nyp.edu.sg
+    text = re.sub(
+        r'\b(?!nyp_sns@nyp\.edu\.sg\b)[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b',
+        '[REDACTED EMAIL]',
+        text
+    )
     # Redact Singapore phone numbers (8 digits, starting with 6, 8, or 9)
     text = re.sub(r'\b[689]\d{7}\b', '[REDACTED PHONE]', text)
     # Redact generic phone numbers (8+ digits)
     text = re.sub(r'\b\d{8,}\b', '[REDACTED PHONE]', text)
     # Optionally redact ages (e.g., "Age: 21")
     text = re.sub(r'Age: ?\d+', 'Age: [REDACTED]', text)
-    NAMES_TO_REDACT = ["Audrey Wai", "John Tan", "Marcus Lee", "Jessie Tang","Liew Tan En", "Ng Su Li", "Soh Lay Hong", "Megane Wong", "Akram", "Kah Wee", "Al", "Dloysius", "Nurul Assyakirin Izzati","Sasha"]
+    NAMES_TO_REDACT = [
+        "Audrey Wai", "John Tan", "Marcus Lee", "Jessie Tang", "Liew Tan En",
+        "Ng Su Li", "Soh Lay Hong", "Megane Wong", "Akram", "Kah Wee", "Al",
+        "Dloysius", "Nurul Assyakirin Izzati", "Sasha"
+    ]
     for name in NAMES_TO_REDACT:
-        # Use word boundaries and ignore case
         pattern = re.compile(r'\b' + re.escape(name) + r'\b', re.IGNORECASE)
         text = pattern.sub('[REDACTED NAME]', text)
     return text
