@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chatbot Test</title>
+</head>
+<body>
+  <h2>Chatbot</h2>
+  <input type="text" id="message" placeholder="Type your message..." size="40">
+  <button onclick="sendMessage()">Send</button>
+  <pre id="response"></pre>
+
+  <script>
+    async function sendMessage() {
+      const msg = document.getElementById('message').value;
+      const resElem = document.getElementById('response');
+      resElem.textContent = "Loading...";
+      try {
+        const response = await fetch('http://localhost:3000/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: msg })
+        });
+        const data = await response.json();
+        resElem.textContent = data.response;
+      } catch (err) {
+        resElem.textContent = "Error: " + err;
+      }
+    }
+  </script>
+</body>
+</html>
