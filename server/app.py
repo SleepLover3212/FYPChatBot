@@ -13,9 +13,10 @@ CORS(app)
 
 load_dotenv()  # Load environment variables from .env file
 API_KEY = os.getenv('OPENAI_API_KEY')
+PADLET_CONTENT = os.getenv('PADLET_CONTENT')
 client = OpenAI(api_key=API_KEY)
 
-def load_padlet_content(folder='server/padlet_content'):
+def load_padlet_content(folder=PADLET_CONTENT):
     combined = ""
     # Read all .txt files
     for fname in os.listdir(folder):
@@ -235,11 +236,11 @@ def chat():
     print(f"simplify: {simplify}")
     
     padlet_content = load_padlet_content()
-    padlet_content = redact_sensitive_info(padlet_content)
+    padlet_content_redacted = redact_sensitive_info(padlet_content)
 
     system_prompt = build_system_prompt(distressed, escalated, special_needs, refused_condition, simplify)
     
-    full_system_prompt = system_prompt + "\n\nHere is all the information you must use to answer questions:\n" + padlet_content
+    full_system_prompt = system_prompt + "\n\nHere is all the information you must use to answer questions:\n" + padlet_content_redacted
 
     response = client.chat.completions.create(
         model="gpt-3.5-turbo",
