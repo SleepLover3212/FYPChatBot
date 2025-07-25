@@ -51,6 +51,11 @@
   text-align: left;
 }
 
+.button-container {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .chat-message {
   margin: 8px 0;
   padding: 10px 16px;

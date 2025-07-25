@@ -1,17 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import './App.css'
 import ReactMarkdown from 'react-markdown'
-
-// const system_prompt = `
-// You are a Nanyang Polytechnic Special Needs Consultant (not a student).
-// Answer questions as if you are consulting a Nanyang Polytechnic student.
-// Base your answers strictly on the information from this Padlet:
-// https://nyp.padlet.org/marcus_lee9/for-students-with-sen-information-for-freshmen-vq2o69ew4lwgmjb8.
-// If you do not know the answer or the answer is not in the Padlet, refer the student to nyp_sns@nyp.edu.sg.
-// If the student displays any form of negativity, frustration, or anger, respond with empathy and understanding and refer the student to nyp_sns@nyp.edu.sg.
-// Do not make up information. If unsure, say: 'Please refer to nyp_sns@nyp.edu.sg for further assistance.'
-// Never answer as a student. Always answer as the consultant. Do not reply to students to refer to the Padlet.
-// `;
+import micIcon from './assets/microphone.png'
 
 function App() {
   const [message, setMessage] = useState('')
@@ -325,11 +315,19 @@ You can type your question or select a topic below to get started!`
         rows={3}
         style={{ width: '600px', resize: 'vertical' }}
       />
-      <button onClick={startListening} style={{ marginLeft: '10px' }}>🎤</button>
-      <button onClick={sendMessage} disabled={loading || !message} style={{ marginLeft: '10px' }}>
-        {loading ? 'Sending...' : 'Send'}
-      </button>
-      <pre>{response}</pre>
+      <div className="button-container">
+        <button onClick={startListening} style={{ marginLeft: '10px' }}>
+          <img src={micIcon} alt="🎤" style={{ width: 24, height: 24 }} />
+        </button>
+        <button onClick={sendMessage} disabled={loading || !message} style={{ marginLeft: '10px', width: 200 }}>
+          {loading ? 'Sending...' : 'Send'}
+        </button>
+      </div>
+
+      {/*
+        # Error handling
+        <pre>{response}</pre>
+      */}
 
       <hr style={{ margin: '32px 0' }} />
 
