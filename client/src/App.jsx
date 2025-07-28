@@ -4,7 +4,7 @@ import ReactMarkdown from 'react-markdown'
 import micIcon from './assets/microphone.png'
 
 function App() {
-  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
   const [message, setMessage] = useState('')
   const [response, setResponse] = useState('')
