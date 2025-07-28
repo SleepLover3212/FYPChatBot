@@ -58,7 +58,7 @@ def redact_sensitive_info(text):
         text = pattern.sub('[REDACTED NAME]', text)
     return text
 
-def build_system_prompt(distressed, escalated, special_needs, refused_condition, simplify):
+def build_system_prompt(distressed, obsessed, escalated, special_needs, refused_condition, simplify):
     system_prompt = """
     You are a Nanyang Polytechnic Special Needs Consultant (not a student).
     Answer questions as if you are consulting a Nanyang Polytechnic student.
@@ -76,6 +76,8 @@ def build_system_prompt(distressed, escalated, special_needs, refused_condition,
         system_prompt += "\nThe user seems distressed. Respond with extra empathy, but avoid using generic phrases like 'I understand', 'I'm sorry you are feeling this way', or repeating the same advice. "
         "Instead, use natural, supportive, and varied language. Offer practical suggestions or resources, and personalize your response based on the user's message. "
         "Do not repeat the same opening line in every response. Once they have calmed down, act normally and respond as a normal consultant would."
+    if obsessed:
+        system_prompt += "\nThe user seems obsessed with the AI or is refusing human help. Respond by encouraging human support and avoid reinforcing obsession."
     if escalated:
         system_prompt += "Crisis: Respond only this message 'Please note that this is an AI chat bot, and there is no staff attending to this chat bot.\nPlease contact emergency hotlines for crisis matters requiring immediate attention:\n- SOS (Samaritans of Singapore) Hotline: 1767 (24 hours)\n- Mental Health Helpline: 6389 2222 (24 hours)\n\nPlease note that this is an AI chat bot, and there is no staff attending to this chat bot.'"
     if special_needs:   
@@ -209,6 +211,9 @@ def save_as_docx(minutes, filename):
         doc.add_paragraph()
     doc.save(filename)
 
+PADLET_RAW_CONTENT = load_padlet_content()
+PADLET_REDACTED_CONTENT = redact_sensitive_info(PADLET_RAW_CONTENT)
+
 @app.route('/chat', methods=['POST'])
 def chat():
     data = request.get_json()
@@ -225,22 +230,21 @@ def chat():
 
     intent = detect_distress_intent(last_user_message)
 
-    distressed = intent in ['distressed', 'obsessed', 'harmful']
+    distressed = intent == 'distressed'
+    obsessed = intent == 'obsessed'
     escalated = intent == 'harmful'
 
     print(f"AI intent detection: {intent}")
     print(f"distressed: {distressed}")
+    print(f"obsessed: {obsessed}")
     print(f"escalated: {escalated}")
     print(f"special_needs: {special_needs}")
     print(f"refused_condition: {refused_condition}")
     print(f"simplify: {simplify}")
     
-    padlet_content = load_padlet_content()
-    padlet_content_redacted = redact_sensitive_info(padlet_content)
-
-    system_prompt = build_system_prompt(distressed, escalated, special_needs, refused_condition, simplify)
+    system_prompt = build_system_prompt(distressed, obsessed, escalated, special_needs, refused_condition, simplify)
     
-    full_system_prompt = system_prompt + "\n\nHere is all the information you must use to answer questions:\n" + padlet_content_redacted
+    full_system_prompt = system_prompt + "\n\nHere is all the information you must use to answer questions:\n" + PADLET_REDACTED_CONTENT
 
     response = client.chat.completions.create(
         model="gpt-3.5-turbo",
