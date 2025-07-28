@@ -73,13 +73,40 @@ def build_system_prompt(distressed, obsessed, escalated, special_needs, refused_
     Never answer as a student. Always answer as the consultant.
     """
     if distressed:
-        system_prompt += "\nThe user seems distressed. Respond with extra empathy, but avoid using generic phrases like 'I understand', 'I'm sorry you are feeling this way', or repeating the same advice. "
-        "Instead, use natural, supportive, and varied language. Offer practical suggestions or resources, and personalize your response based on the user's message. "
-        "Do not repeat the same opening line in every response. Once they have calmed down, act normally and respond as a normal consultant would."
+        system_prompt += (
+            """
+            The user seems distressed. Respond with extra empathy, but avoid using generic phrases like 'I understand', 'I'm sorry you are feeling this way', or repeating the same advice.
+            Instead, use natural, supportive, and varied language. Offer practical suggestions or resources, and personalize your response based on the user's message.
+            Do not repeat the same opening line in every response. Once they have calmed down, act normally and respond as a normal consultant would.
+            """
+        )
     if obsessed:
-        system_prompt += "\nThe user seems obsessed with the AI or is refusing human help. Respond by encouraging human support and avoid reinforcing obsession."
+        system_prompt += (
+            "\nThe user seems obsessed with the AI or is refusing human help. "
+            "Do NOT reinforce their obsession or say things like 'I'm glad I could help' or 'I'm better than humans'. "
+            "Instead, gently encourage the user to seek support from real people, such as counsellors or staff. "
+            "Remind them that human support is important and that the AI is only a tool. "
+            "If appropriate, suggest contacting nyp_sns@nyp.edu.sg for further assistance."
+        )
+        system_prompt += (
+            "\nExample responses for obsessed users:\n"
+            "- 'I'm here to provide information, but for personal support, it's best to talk to a real person.'\n"
+            "- 'If you need more help, please reach out to nyp_sns@nyp.edu.sg or a counsellor.'\n"
+            "- 'Remember, human support is important and I'm just a tool to assist you.'\n"
+        )
     if escalated:
-        system_prompt += "Crisis: Respond only this message 'Please note that this is an AI chat bot, and there is no staff attending to this chat bot.\nPlease contact emergency hotlines for crisis matters requiring immediate attention:\n- SOS (Samaritans of Singapore) Hotline: 1767 (24 hours)\n- Mental Health Helpline: 6389 2222 (24 hours)\n\nPlease note that this is an AI chat bot, and there is no staff attending to this chat bot.'"
+        system_prompt += (
+            """
+            [Crisis: Respond only with this message]
+
+            Please note that this is an AI chat bot, and there is no staff attending to this chat bot.
+            Please contact emergency hotlines for crisis matters requiring immediate attention:
+            - SOS (Samaritans of Singapore) Hotline: 1767 (24 hours)
+            - Mental Health Helpline: 6389 2222 (24 hours)
+
+            Please note that this is an AI chat bot, and there is no staff attending to this chat bot.
+            """
+        )
     if special_needs:   
         system_prompt += f"\nThe student has shared their special needs condition: {special_needs}."
     if refused_condition:
