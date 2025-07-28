@@ -9,7 +9,7 @@ import pdfplumber
 import re
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, origins="*")
 
 load_dotenv()  # Load environment variables from .env file
 API_KEY = os.getenv('OPENAI_API_KEY')
