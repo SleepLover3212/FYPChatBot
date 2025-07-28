@@ -4,6 +4,8 @@ import ReactMarkdown from 'react-markdown'
 import micIcon from './assets/microphone.png'
 
 function App() {
+  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
+
   const [message, setMessage] = useState('')
   const [response, setResponse] = useState('')
   const [loading, setLoading] = useState(false)
@@ -202,7 +204,7 @@ You can type your question or select a topic below to get started!`
     setConversation(newConversation);
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:3000/chat', {
+      const res = await fetch(`${API_BASE_URL}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -229,7 +231,7 @@ You can type your question or select a topic below to get started!`
     setMinutesLoading(true)
     setMinutes(null)
     try {
-      const res = await fetch('http://localhost:3000/minutes')
+      const res = await fetch(`${API_BASE_URL}/minutes`)
       const data = await res.json()
       setMinutes(data)
     } catch (err) {
