@@ -14,6 +14,9 @@ CORS(app)
 load_dotenv()  # Load environment variables from .env file
 API_KEY = os.getenv('OPENAI_API_KEY')
 PADLET_CONTENT = os.getenv('PADLET_CONTENT')
+if not PADLET_CONTENT:
+    raise RuntimeError("PADLET_CONTENT environment variable is not set!")
+print("PADLET_CONTENT:", PADLET_CONTENT)
 client = OpenAI(api_key=API_KEY)
 
 def load_padlet_content(folder=PADLET_CONTENT):
