@@ -202,7 +202,7 @@ You can type your question or select a topic below to get started!`
     setConversation(newConversation);
     setLoading(true);
     try {
-      const res = await fetch('https://nyp-sen-chatbot.onrender.com/chat', {
+      const res = await fetch('http://localhost:3000/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -229,7 +229,7 @@ You can type your question or select a topic below to get started!`
     setMinutesLoading(true)
     setMinutes(null)
     try {
-      const res = await fetch('https://nyp-sen-chatbot.onrender.com/minutes')
+      const res = await fetch('http://localhost:3000/minutes')
       const data = await res.json()
       setMinutes(data)
     } catch (err) {
