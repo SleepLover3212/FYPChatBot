@@ -245,6 +245,7 @@ You can type your question or select a topic below to get started!`
     };
     recognition.start();
   };
+
   // File Upload
   const handleFileChange = (e) => {
     setAudioFile(e.target.files[0]);
@@ -309,33 +310,57 @@ You can type your question or select a topic below to get started!`
         </div>
       )}
 
-      {/* Textbox and buttons */}
-      <textarea
-        value={message}
-        onChange={e => setMessage(e.target.value)}
-        onKeyDown={e => {
-          if (
-            e.key === 'Enter' &&
-            !e.shiftKey &&
-            !e.ctrlKey &&
-            !loading &&
-            message.trim()
-          ) {
-            sendMessage();
-            setMessage('');
-            e.preventDefault();
-          }
-        }}
-        placeholder="Type your message..."
-        rows={3}
-        style={{ width: '600px', resize: 'vertical' }}
-      />
-      <div className="button-container">
-        <button onClick={startListening} style={{ marginLeft: '10px' }}>
+      {/* Chat Controls */}
+      <div className="chat-controls" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+        <textarea
+          value={message}
+          onChange={e => setMessage(e.target.value)}
+          onKeyDown={e => {
+            if (
+              e.key === 'Enter' &&
+              !e.shiftKey &&
+              !e.ctrlKey &&
+              !loading &&
+              message.trim()
+            ) {
+              sendMessage();
+              setMessage('');
+              e.preventDefault();
+            }
+          }}
+          placeholder="Type your message..."
+          rows={3}
+          style={{ width: '400px', resize: 'vertical' }}
+        />
+        <button onClick={startListening} style={{ width: 60, height: 60 }}>
           <img src={micIcon} alt="🎤" style={{ width: 24, height: 24 }} />
         </button>
-        <button onClick={sendMessage} disabled={loading || !message} style={{ marginLeft: '10px', width: 200 }}>
+        <button onClick={sendMessage} disabled={loading || !message} style={{ width: 100 }}>
           {loading ? 'Sending...' : 'Send'}
+        </button>
+      </div>
+
+      {/* Audio Controls */}
+      <div className="audio-controls" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+        <input
+          type="file"
+          accept="audio/*"
+          onChange={handleFileChange}
+          style={{ width: 200 }}
+        />
+        <button
+          onClick={uploadAudio}
+          disabled={minutesLoading || !audioFile}
+          style={{ width: 150 }}
+        >
+          {minutesLoading ? 'Transcribing...' : 'Transcribe Audio'}
+        </button>
+        <button
+          onClick={() => window.open(`${API_BASE_URL}/download-audio-docx`, '_blank')}
+          disabled={minutesLoading || !minutes || minutes.error}
+          style={{ width: 200 }}
+        >
+          Download Audio Summary
         </button>
       </div>
 
@@ -344,7 +369,7 @@ You can type your question or select a topic below to get started!`
         <pre>{response}</pre>
       */}
 
-      <div style={{ margin: '16px 0', display: 'flex', gap: '10px', alignItems: 'center' }}>
+      {/* <div style={{ margin: '16px 0', display: 'flex', gap: '10px', alignItems: 'center' }}>
         <input
           type="file"
           accept="audio/*"
@@ -366,7 +391,7 @@ You can type your question or select a topic below to get started!`
         >
           Download Audio Summary (Microsoft Word)
         </button>
-      </div>
+      </div> */}
 
       <hr style={{ margin: '32px 0' }} />
 
@@ -380,7 +405,7 @@ You can type your question or select a topic below to get started!`
               {Object.entries(minutes).map(([key, value]) => (
                 <li key={key}>
                   <strong>{key.replace(/_/g, ' ').toUpperCase()}:</strong>
-                  <pre>{value}</pre>
+                  <ReactMarkdown>{value}</ReactMarkdown>
                 </li>
               ))}
             </ul>

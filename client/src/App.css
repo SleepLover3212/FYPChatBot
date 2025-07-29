@@ -51,11 +51,6 @@
   text-align: left;
 }
 
-.button-container {
-  display: flex;
-  justify-content: flex-end;
-}
-
 .chat-message {
   margin: 8px 0;
   padding: 10px 16px;
@@ -98,4 +93,20 @@
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+.chat-controls,
+.audio-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.chat-controls textarea {
+  flex: 1;
+}
+
+.audio-controls input[type="file"] {
+  width: 200px;
 }
