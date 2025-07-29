@@ -361,7 +361,7 @@ You can type your question or select a topic below to get started!`
 
         <button
           onClick={() => window.open(`${API_BASE_URL}/download-audio-docx`, '_blank')}
-          disabled={minutesLoading}
+          disabled={minutesLoading || !minutes || minutes.error}
           style={{ width: 300, marginLeft: '10px' }}
         >
           Download Audio Summary (Microsoft Word)
