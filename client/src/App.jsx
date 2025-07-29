@@ -9,6 +9,7 @@ function App() {
   const [message, setMessage] = useState('')
   const [response, setResponse] = useState('')
   const [loading, setLoading] = useState(false)
+  const [audioFile, setAudioFile] = useState(null);
   const [minutes, setMinutes] = useState(null)
   const [minutesLoading, setMinutesLoading] = useState(false)
 
@@ -227,19 +228,6 @@ You can type your question or select a topic below to get started!`
     setLoading(false)
   }
 
-  const fetchMinutes = async () => {
-    setMinutesLoading(true)
-    setMinutes(null)
-    try {
-      const res = await fetch(`${API_BASE_URL}/minutes`)
-      const data = await res.json()
-      setMinutes(data)
-    } catch (err) {
-      setMinutes({ error: err.message })
-    }
-    setMinutesLoading(false)
-  }
-
   const startListening = () => {
     if (!('webkitSpeechRecognition' in window)) {
       alert('Speech recognition not supported in this browser.');
@@ -256,6 +244,29 @@ You can type your question or select a topic below to get started!`
       alert('Speech recognition error: ' + event.error);
     };
     recognition.start();
+  };
+  // File Upload
+  const handleFileChange = (e) => {
+    setAudioFile(e.target.files[0]);
+  };
+
+  const uploadAudio = async () => {
+    if (!audioFile) return;
+    const formData = new FormData();
+    formData.append('file', audioFile);
+
+    setMinutesLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/upload-audio`, {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      setMinutes(data);
+    } catch (err) {
+      setMinutes({ error: err.message });
+    }
+    setMinutesLoading(false);
   };
 
   return (
@@ -297,6 +308,8 @@ You can type your question or select a topic below to get started!`
           ))}
         </div>
       )}
+
+      {/* Textbox and buttons */}
       <textarea
         value={message}
         onChange={e => setMessage(e.target.value)}
@@ -331,21 +344,42 @@ You can type your question or select a topic below to get started!`
         <pre>{response}</pre>
       */}
 
+      <div style={{ margin: '16px 0', display: 'flex', gap: '10px', alignItems: 'center' }}>
+        <input
+          type="file"
+          accept="audio/*"
+          onChange={handleFileChange}
+          style={{ marginRight: '10px' }}
+        />
+        <button
+          onClick={uploadAudio}
+          disabled={minutesLoading || !audioFile}
+          style={{ width: 200 }}
+        >
+          {minutesLoading ? 'Transcribing...' : 'Transcribe Audio'}
+        </button>
+
+        <button
+          onClick={() => window.open(`${API_BASE_URL}/download-audio-docx`, '_blank')}
+          disabled={minutesLoading}
+          style={{ width: 300, marginLeft: '10px' }}
+        >
+          Download Audio Summary (Microsoft Word)
+        </button>
+      </div>
+
       <hr style={{ margin: '32px 0' }} />
 
-      <button onClick={fetchMinutes} disabled={minutesLoading}>
-        {minutesLoading ? 'Loading Minutes...' : 'Get Audio Summary'}
-      </button>
       {minutes && (
         <div>
-          <h2>Meeting Minutes</h2>
+          <h2>Audio Summary</h2>
           {minutes.error ? (
             <p>Error: {minutes.error}</p>
           ) : (
             <ul>
               {Object.entries(minutes).map(([key, value]) => (
                 <li key={key}>
-                  <strong>{key.replace(/_/g, ' ')}:</strong>
+                  <strong>{key.replace(/_/g, ' ').toUpperCase()}:</strong>
                   <pre>{value}</pre>
                 </li>
               ))}

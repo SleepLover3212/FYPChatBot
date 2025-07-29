@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from openai import OpenAI
 from docx import Document
@@ -227,7 +227,7 @@ def sentiment_analysis(transcription):
     )
     return response.choices[0].message.content
 
-def save_as_docx(minutes, filename):
+def save_as_docx(minutes, filename, transcript=None):
     doc = Document()
     for key, value in minutes.items():
         # Replace underscores with spaces and capitalize each word for the heading
@@ -235,6 +235,11 @@ def save_as_docx(minutes, filename):
         doc.add_heading(heading, level=1)
         doc.add_paragraph(value)
         # Add a line break between sections
+        doc.add_paragraph()
+    # Add full transcript section in Microsoft Word if provided
+    if transcript:
+        doc.add_heading('Full Transcript', level=1)
+        doc.add_paragraph(transcript)
         doc.add_paragraph()
     doc.save(filename)
 
@@ -281,13 +286,38 @@ def chat():
     )
     return jsonify({'response': response.choices[0].message.content})
 
-@app.route('/minutes', methods=['GET'])
-def get_minutes():
-    audio_file_path = "birthday2.mp4"  # Replace with the path to your audio file
-    transcription = transcribe_audio(audio_file_path)
+@app.route('/upload-audio', methods=['POST'])
+def upload_audio():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part'}), 400
+    audio_file = request.files['file']
+    if audio_file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
+    
+    # Check file extension
+    allowed_extensions = {'wav', 'mp3', 'mp4', 'm4a', 'ogg', 'flac', 'aac', 'wma', 'aiff', 'amr', 'opus', 'webm'}
+    ext = audio_file.filename.rsplit('.', 1)[-1].lower()
+    if ext not in allowed_extensions:
+        return jsonify({'error': f'Unsupported file format: .{ext}. Allowed formats: {", ".join(allowed_extensions)}'}), 400
+
+    # Save the file temporarily
+    temp_path = f"/tmp/{audio_file.filename}"
+    audio_file.save(temp_path)
+
+    # Transcribe and generate minutes
+    transcription = transcribe_audio(temp_path)
     minutes = meeting_minutes(transcription)
-    save_as_docx(minutes, 'audio.docx')
+    # Save the file with transcript
+    save_as_docx(minutes, '/tmp/audio.docx', transcript=transcription)
     return jsonify(minutes)
+
+# Download audio transcript endpoint
+@app.route('/download-audio-docx', methods=['GET'])
+def download_audio_docx():
+    docx_path = '/tmp/audio.docx'
+    if not os.path.exists(docx_path):
+        return jsonify({'error': 'No document found'}), 404
+    return send_file(docx_path, as_attachment=True)
 
 if __name__ == '__main__':
     app.run(host='127.0.0.1', port=3000, debug=True)
