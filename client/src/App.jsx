@@ -126,7 +126,6 @@ You can type your question or select a topic below to get started!`
   const sendMessage = async (msg) => {
     const userMsg = (typeof msg === "string" ? msg : message).trim();
     if (!userMsg) return;
-    // if (!message.trim()) return;'
 
     if (awaitingCondition && !specialNeeds && !refusedCondition) {
       if (matchesKeyword(userMsg, "refusal")) {
@@ -332,10 +331,10 @@ You can type your question or select a topic below to get started!`
           rows={3}
           style={{ width: '400px', resize: 'vertical' }}
         />
-        <button onClick={startListening} style={{ width: 60, height: 60 }}>
+        <button onClick={startListening} style={{ width: 60, height: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%'}}>
           <img src={micIcon} alt="🎤" style={{ width: 24, height: 24 }} />
         </button>
-        <button onClick={sendMessage} disabled={loading || !message} style={{ width: 100 }}>
+        <button onClick={sendMessage} disabled={loading || !message} style={{ width: 130, height: 60 }}>
           {loading ? 'Sending...' : 'Send'}
         </button>
       </div>
@@ -368,30 +367,6 @@ You can type your question or select a topic below to get started!`
         # Error handling
         <pre>{response}</pre>
       */}
-
-      {/* <div style={{ margin: '16px 0', display: 'flex', gap: '10px', alignItems: 'center' }}>
-        <input
-          type="file"
-          accept="audio/*"
-          onChange={handleFileChange}
-          style={{ marginRight: '10px' }}
-        />
-        <button
-          onClick={uploadAudio}
-          disabled={minutesLoading || !audioFile}
-          style={{ width: 200 }}
-        >
-          {minutesLoading ? 'Transcribing...' : 'Transcribe Audio'}
-        </button>
-
-        <button
-          onClick={() => window.open(`${API_BASE_URL}/download-audio-docx`, '_blank')}
-          disabled={minutesLoading || !minutes || minutes.error}
-          style={{ width: 300, marginLeft: '10px' }}
-        >
-          Download Audio Summary (Microsoft Word)
-        </button>
-      </div> */}
 
       <hr style={{ margin: '32px 0' }} />
 

@@ -49,9 +49,9 @@ def redact_sensitive_info(text):
     # Optionally redact ages (e.g., "Age: 21")
     text = re.sub(r'Age: ?\d+', 'Age: [REDACTED]', text)
     NAMES_TO_REDACT = [
-        "Audrey Wai", "John Tan", "Marcus Lee", "Jessie Tang", "Liew Tan En",
-        "Ng Su Li", "Soh Lay Hong", "Megane Wong", "Akram", "Kah Wee", "Al",
-        "Dloysius", "Nurul Assyakirin Izzati", "Sasha"
+        "Audrey Wai", "John Tan", "Marcus Lee", "Jessie Tang", "Liew Tian En",
+        "Ng Su Li", "Soh Lay Hong", "Megane Wong", "Khoo Kiah Hong", "Chai Kuek Heng",
+        "Akram", "Ridzuan", "Kah Wee", "Al", "Dloysius", "Nurul Assyakirin Izzati", "Sasha"
     ]
     for name in NAMES_TO_REDACT:
         pattern = re.compile(r'\b' + re.escape(name) + r'\b', re.IGNORECASE)
@@ -65,6 +65,8 @@ def build_system_prompt(distressed, obsessed, escalated, special_needs, refused_
     Base your answers strictly on the information provided:
     
     Never reveal sensitive information of any staff member, alumni or student mentioned inside. For example email addresses, phone numbers, or any other personal information.
+    Never reveal or mention the source of your knowledge, such as the "padlet_content" folder, any internal data source, or that you have read files.
+    If asked about your knowledge source, respond: 'I am here to assist based on the information I have been provided.'
     If you know the answer, answer directly and conversationally, as a helpful consultant would. 
     If you do not know the answer or the answer is not in the content, say honestly that you do not have that information, and suggest the student contact nyp_sns@nyp.edu.sg for further assistance.
     If the student displays any form of negativity, frustration, or anger, respond with empathy and understanding and refer the student to nyp_sns@nyp.edu.sg.
@@ -144,7 +146,8 @@ def transcribe_audio(audio_file_path):
     with open(audio_file_path, 'rb') as audio_file:
         response = client.audio.transcriptions.create(
             model="whisper-1", 
-            file=audio_file)
+            file=audio_file
+        )
     return response.text
 
 def meeting_minutes(transcription):
