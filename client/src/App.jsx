@@ -331,10 +331,10 @@ You can type your question or select a topic below to get started!`
           rows={3}
           style={{ width: '400px', resize: 'vertical' }}
         />
-        <button onClick={startListening} style={{ width: 60, height: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%'}}>
+        <button onClick={startListening} style={{ width: 55, height: 55, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%'}}>
           <img src={micIcon} alt="🎤" style={{ width: 24, height: 24 }} />
         </button>
-        <button onClick={sendMessage} disabled={loading || !message} style={{ width: 130, height: 60 }}>
+        <button onClick={sendMessage} disabled={loading || !message} style={{ width: 130, height: 50 }}>
           {loading ? 'Sending...' : 'Send'}
         </button>
       </div>
@@ -345,19 +345,19 @@ You can type your question or select a topic below to get started!`
           type="file"
           accept="audio/*"
           onChange={handleFileChange}
-          style={{ width: 200 }}
+          style={{ width: 300 }}
         />
         <button
           onClick={uploadAudio}
           disabled={minutesLoading || !audioFile}
-          style={{ width: 150 }}
+          style={{ width: 200, height: 70 }}
         >
           {minutesLoading ? 'Transcribing...' : 'Transcribe Audio'}
         </button>
         <button
           onClick={() => window.open(`${API_BASE_URL}/download-audio-docx`, '_blank')}
           disabled={minutesLoading || !minutes || minutes.error}
-          style={{ width: 200 }}
+          style={{ width: 200, height: 70 }}
         >
           Download Audio Summary
         </button>
