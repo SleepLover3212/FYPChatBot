@@ -152,9 +152,21 @@ def transcribe_audio(audio_file_path):
 
 def meeting_minutes(transcription):
     abstract_summary = abstract_summary_extraction(transcription)
+    if "I'm here to help" in abstract_summary or "Could you please" in abstract_summary:
+        abstract_summary = "Unable to create a summary of the provided content."
+        
     key_points = key_points_extraction(transcription)
+    if "I'm here to help" in key_points or "Could you please" in key_points:
+        key_points = "No key points were extracted from the content."
+        
     action_items = action_item_extraction(transcription)
+    if not action_items:
+        action_items = "No action items were identified in the content."
+        
     sentiment = sentiment_analysis(transcription)
+    if "I'm here to help" in sentiment or "Could you please" in sentiment:
+        sentiment = "Unable to deduce sentiment of audio clip"
+        
     return {
         'abstract_summary': abstract_summary,
         'key_points': key_points,
@@ -169,7 +181,15 @@ def abstract_summary_extraction(transcription):
         messages=[
             {
                 "role": "system",
-                "content": "You are a highly skilled AI trained in language comprehension and summarization. I would like you to read the following text and summarize it into a concise abstract paragraph. Aim to retain the most important points, providing a coherent and readable summary that could help a person understand the main points of the discussion without needing to read the entire text. Please avoid unnecessary details or tangential points."
+                "content": (
+                    "You are a highly skilled AI trained in language comprehension and summarization. "
+                    "I would like you to read the following text and summarize it into a concise abstract paragraph. "
+                    "Aim to retain the most important points, providing a coherent and readable summary that could help "
+                    "a person understand the main points of the discussion without needing to read the entire text. "
+                    "Please avoid unnecessary details or tangential points."
+                    "If you cannot generate a meaningful summary, respond with: 'Unable to create a summary of the provided content.' "
+                    "Avoid conversational or empathetic language. Provide only factual and direct responses."
+                )            
             },
             {
                 "role": "user",
@@ -186,7 +206,14 @@ def key_points_extraction(transcription):
         messages=[
             {
                 "role": "system",
-                "content": "You are a proficient AI with a specialty in distilling information into key points. Based on the following text, identify and list the main points that were discussed or brought up. These should be the most important ideas, findings, or topics that are crucial to the essence of the discussion. Your goal is to provide a list that someone could read to quickly understand what was talked about."
+                "content": (
+                    "You are a proficient AI with a specialty in distilling information into key points. "
+                    "Based on the following text, identify and list the main points that were discussed or brought up. "
+                    "These should be the most important ideas, findings, or topics that are crucial to the essence of the discussion. "
+                    "Your goal is to provide a list that someone could read to quickly understand what was talked about."
+                    "If no key points can be extracted, respond with: 'No key points were extracted from the content.' "
+                    "Avoid conversational or empathetic language. Provide only factual and direct responses."
+                )            
             },
             {
                 "role": "user",
@@ -203,7 +230,14 @@ def action_item_extraction(transcription):
         messages=[
             {
                 "role": "system",
-                "content": "You are an AI expert in analyzing conversations and extracting action items. Please review the text and identify any tasks, assignments, or actions that were agreed upon or mentioned as needing to be done. These could be tasks assigned to specific individuals, or general actions that the group has decided to take. Please list these action items clearly and concisely."
+                "content": (
+                    "You are an AI expert in analyzing conversations and extracting action items. "
+                    "Please review the text and identify any tasks, assignments, or actions that were agreed upon or mentioned as needing to be done. "
+                    "These could be tasks assigned to specific individuals, or general actions that the group has decided to take. "
+                    "Please list these action items clearly and concisely."
+                    "If no action items are identified, respond with: 'No action items were identified in the content.' "
+                    "Avoid conversational or empathetic language. Provide only factual and direct responses."
+                )            
             },
             {
                 "role": "user",
@@ -220,7 +254,13 @@ def sentiment_analysis(transcription):
         messages=[
             {
                 "role": "system",
-                "content": "As an AI with expertise in language and emotion analysis, your task is to analyze the sentiment of the following text. Please consider the overall tone of the discussion, the emotion conveyed by the language used, and the context in which words and phrases are used. Indicate whether the sentiment is generally positive, negative, or neutral, and provide brief explanations for your analysis where possible."
+                "content": (
+                    "As an AI with expertise in language and emotion analysis, your task is to analyze the sentiment of the following text. "
+                    "Please consider the overall tone of the discussion, the emotion conveyed by the language used, and the context in which words and phrases are used. "
+                    "Indicate whether the sentiment is generally positive, negative, or neutral, and provide brief explanations for your analysis where possible."
+                    "If you cannot determine the sentiment, respond with: 'Unable to deduce sentiment of audio clip.' "
+                    "Avoid conversational or empathetic language. Provide only factual and direct responses."
+                )            
             },
             {
                 "role": "user",
@@ -310,6 +350,7 @@ def upload_audio():
     # Transcribe and generate minutes
     transcription = transcribe_audio(temp_path)
     minutes = meeting_minutes(transcription)
+    
     # Save the file with transcript
     save_as_docx(minutes, '/tmp/audio.docx', transcript=transcription)
     return jsonify(minutes)
