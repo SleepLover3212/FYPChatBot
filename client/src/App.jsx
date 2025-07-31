@@ -75,7 +75,7 @@ You can type your question or select a topic below to get started!`
       "visual impairment", "blindness", "low vision",
       "autism spectrum disorder", "autism",
       "attention deficit hyperactivity disorder", "adhd", "dyslexia",
-      "hearing impairment", "deafness"
+      "hearing impairment", "deafness", "deaf"
     ],
     refusal: [
       "no", "don't want", "do not want", "prefer not", "rather not", "not comfortable", "don't wish", "no thanks", "don't feel like", "not interested", "no need", "idk", "nah", "nay", "nuh uh"
@@ -83,14 +83,18 @@ You can type your question or select a topic below to get started!`
     summary: [
       "attention deficit hyperactivity disorder", "adhd", "dyslexia"
     ],
+    hearingRelated: [
+      "hearing impairment", "deafness", "deaf"
+    ],
     yes: [
       "yes", "yeah", "yep", "sure", "please do", "ok", "okay", "pls", "please"
     ]
   };
 
-  const matchesKeyword = (msg, category) => {
-    const lower = msg.toLowerCase();
-    return keywordCategories[category].some(keyword => lower.includes(keyword));
+  const matchesKeyword = (message, category) => {
+    const keywords = keywordCategories[category];
+    const lowerCaseMessage = message.toLowerCase(); // Convert input to lowercase
+    return keywords.some(keyword => lowerCaseMessage.includes(keyword.toLowerCase())); // Check if any keyword is included
   };
 
   const lastAssistantMsg = conversation.filter(msg => msg.role === "assistant").slice(-1)[0];
@@ -143,8 +147,13 @@ You can type your question or select a topic below to get started!`
         setAwaitingCondition(false);
         setMessage('');
         let followUp = "Thank you for sharing. How can I assist you further?";
+        // Check for ADHD / dyslexic condition
         if (matchesKeyword(userMsg, "summary")) {
           followUp = "Thank you for sharing. Would you like me to summarise any text or information for you to make it easier to understand?";
+        }
+        // Check for hearing-related condition
+        else if (matchesKeyword(userMsg, "hearingRelated")) {
+          followUp = "Thank you for sharing. Since you mentioned hearing impairment or deafness, you might find the audio summary feature helpful. You can insert audio files under 25 MB and transcribe the video into text.";
         }
         setConversation([
           ...conversation,
@@ -331,7 +340,7 @@ You can type your question or select a topic below to get started!`
           rows={3}
           style={{ width: '400px', resize: 'vertical' }}
         />
-        <button onClick={startListening} style={{ width: 55, height: 55, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%'}}>
+        <button onClick={startListening} style={{ width: 55, height: 55, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%' }}>
           <img src={micIcon} alt="🎤" style={{ width: 24, height: 24 }} />
         </button>
         <button onClick={sendMessage} disabled={loading || !message} style={{ width: 130, height: 50 }}>
