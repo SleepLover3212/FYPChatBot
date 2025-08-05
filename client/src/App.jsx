@@ -87,7 +87,7 @@ You can type your question or select a topic below to get started!`
       "hearing impairment", "deafness", "deaf"
     ],
     yes: [
-      "yes", "yeah", "yep", "sure", "please do", "ok", "okay", "pls", "please"
+      "yes", "ye", "yeah", "yep", "sure", "please do", "ok", "okay", "pls", "please"
     ]
   };
 
@@ -212,6 +212,14 @@ You can type your question or select a topic below to get started!`
     ];
     setConversation(newConversation);
     setLoading(true);
+
+    console.log("Sending payload to backend:", {
+      messages: newConversation,
+      specialNeeds,
+      refusedCondition,
+      simplify
+    });
+
     try {
       const res = await fetch(`${API_BASE_URL}/chat`, {
         method: 'POST',
@@ -222,19 +230,43 @@ You can type your question or select a topic below to get started!`
           refusedCondition,
           simplify
         }),
-      })
-      const data = await res.json()
-      setConversation([
-        ...newConversation,
-        { role: "assistant", content: data.response }
-      ])
-      setResponse(data.response)
-      setMessage('')
+      });
+
+      const data = await res.json();
+
+      if (data.error) {
+        setConversation([
+          ...newConversation,
+          { role: "assistant", content: `Error: ${data.error}` }
+        ]);
+      } else {
+        setConversation([
+          ...newConversation,
+          { role: "assistant", content: data.response }
+        ]);
+      }
+
+      setResponse(data.response || data.error);
+      setMessage('');
     } catch (err) {
-      setResponse('Error: ' + err.message)
+      // Handle network errors (e.g., backend not running)
+      if (err.message.includes("Failed to fetch") || err.message.includes("NetworkError")) {
+        setConversation([
+          ...newConversation,
+          { role: "assistant", content: "The backend server is currently unreachable. Please try again later." }
+        ]);
+      } else {
+        // Handle other types of errors
+        setConversation([
+          ...newConversation,
+          { role: "assistant", content: `An error occurred: ${err.message}` }
+        ]);
+      }
+
+      setResponse('Error: ' + err.message);
     }
-    setLoading(false)
-  }
+    setLoading(false);
+  };
 
   const startListening = () => {
     if (!('webkitSpeechRecognition' in window)) {
@@ -270,10 +302,45 @@ You can type your question or select a topic below to get started!`
         method: 'POST',
         body: formData,
       });
+      
       const data = await res.json();
-      setMinutes(data);
+      console.log("API Response:", data); // Debugging log
+
+      if (data.error) {
+        setMinutes({ error: data.error });
+        setConversation([
+          ...conversation,
+          { role: "assistant", content: "There was an error transcribing the audio file. Please try again or upload a different file." }
+        ]);
+      } else {
+        setMinutes(data);
+
+        // Add the transcript to the chatbox so the chatbot can read it
+        const transcript = data.transcript || "No transcript available.";
+        console.log("Transcript:", transcript); // Debugging log
+        setConversation([
+          ...conversation,
+          { role: "user", content: "Uploaded an audio file for transcription." },
+          { role: "assistant", content: `Here is the transcript of your audio:\n\n${transcript}` }
+        ]);
+      }
     } catch (err) {
-      setMinutes({ error: err.message });
+      console.error("Error:", err); // Debugging log
+
+      // Handle network errors (e.g., backend not running)
+      if (err.message.includes("Failed to fetch") || err.message.includes("NetworkError")) {
+        setConversation([
+          ...conversation,
+          { role: "assistant", content: "The backend server is currently unreachable. Please try again later." }
+        ]);
+      } else {
+        // Handle other types of errors
+        setMinutes({ error: err.message });
+        setConversation([
+          ...conversation,
+          { role: "assistant", content: `An error occurred while processing the audio file: ${err.message}` }
+        ]);
+      }
     }
     setMinutesLoading(false);
   };

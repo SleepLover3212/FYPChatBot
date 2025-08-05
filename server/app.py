@@ -320,6 +320,8 @@ def chat():
     system_prompt = build_system_prompt(distressed, obsessed, escalated, special_needs, refused_condition, simplify)
     
     full_system_prompt = system_prompt + "\n\nHere is all the information you must use to answer questions:\n" + PADLET_REDACTED_CONTENT
+    
+    # print(full_system_prompt)
 
     response = client.chat.completions.create(
         model="gpt-3.5-turbo",
@@ -333,27 +335,48 @@ def chat():
 def upload_audio():
     if 'file' not in request.files:
         return jsonify({'error': 'No file part'}), 400
+    
     audio_file = request.files['file']
     if audio_file.filename == '':
         return jsonify({'error': 'No selected file'}), 400
     
     # Check file extension
-    allowed_extensions = {'wav', 'mp3', 'mp4', 'm4a', 'ogg', 'flac', 'aac', 'wma', 'aiff', 'amr', 'opus', 'webm'}
+    allowed_extensions = {'wav', 'mp3', 'mp4', 'm4a'}
     ext = audio_file.filename.rsplit('.', 1)[-1].lower()
     if ext not in allowed_extensions:
         return jsonify({'error': f'Unsupported file format: .{ext}. Allowed formats: {", ".join(allowed_extensions)}'}), 400
+    
+    max_file_size = 25 * 1024 * 1024
+    audio_file.seek(0, os.SEEK_END)  # Move the cursor to the end of the file
+    file_size = audio_file.tell()  # Get the file size
+    audio_file.seek(0)  # Reset the cursor to the beginning of the file
 
+    if file_size > max_file_size:
+        return jsonify({
+            'error': f'File size exceeds the 25 MB limit. The uploaded file is {file_size / (1024 * 1024):.2f} MB.'
+        }), 413
+        
     # Save the file temporarily
     temp_path = f"/tmp/{audio_file.filename}"
     audio_file.save(temp_path)
 
-    # Transcribe and generate minutes
-    transcription = transcribe_audio(temp_path)
-    minutes = meeting_minutes(transcription)
+    try:
+        # Transcribe and generate minutes
+        transcription = transcribe_audio(temp_path)
+        minutes = meeting_minutes(transcription)
+        
+        # Save the file with transcript
+        save_as_docx(minutes, '/tmp/audio.docx', transcript=transcription)
     
-    # Save the file with transcript
-    save_as_docx(minutes, '/tmp/audio.docx', transcript=transcription)
-    return jsonify(minutes)
+        # Include the transcript in the response
+        return jsonify({**minutes, 'transcript': transcription})
+    except Exception as e:
+        print("Error:", str(e))  # Debugging log
+        return jsonify({'error': 'An error occurred while processing the audio file.'}), 500
+    finally:
+        # Clean up the temporary file
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
 
 # Download audio transcript endpoint
 @app.route('/download-audio-docx', methods=['GET'])
