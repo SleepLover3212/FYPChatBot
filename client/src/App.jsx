@@ -8,10 +8,15 @@ function App() {
 
   const [message, setMessage] = useState('')
   const [response, setResponse] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(false);
   const [audioFile, setAudioFile] = useState(null);
-  const [minutes, setMinutes] = useState(null)
-  const [minutesLoading, setMinutesLoading] = useState(false)
+  const [minutes, setMinutes] = useState(null);
+  const [minutesLoading, setMinutesLoading] = useState(false);
+  const [voiceMode, setVoiceMode] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [micCooldown, setMicCooldown] = useState(false);
+  const recognitionRef = useRef(null);
 
   // General conversation
   const [conversation, setConversation] = useState([
@@ -68,11 +73,11 @@ You can type your question or select a topic below to get started!`
 
   const keywordCategories = {
     conditionRelated: [
-      "want to share", "special needs", "disability", "condition"
+      "I want to share my special needs condition", "disability"
     ],
     knownConditions: [
       "skeletal dysplasia", "dwarfism",
-      "visual impairment", "blindness", "low vision",
+      "blind", "visual impairment", "visually impaired", "low vision",
       "autism spectrum disorder", "autism",
       "attention deficit hyperactivity disorder", "adhd", "dyslexia",
       "hearing impairment", "deafness", "deaf"
@@ -86,46 +91,44 @@ You can type your question or select a topic below to get started!`
     hearingRelated: [
       "hearing impairment", "deafness", "deaf"
     ],
+    sightRelated: [
+      "blind", "visual impairment", "visually impaired", "low vision"
+    ],
     yes: [
-      "yes", "ye", "yeah", "yep", "sure", "please do", "ok", "okay", "pls", "please"
+      "yes", "yeah", "yep", "sure", "please do", "ok", "okay", "pls", "please"
     ]
   };
 
   const matchesKeyword = (message, category) => {
     const keywords = keywordCategories[category];
-    const lowerCaseMessage = message.toLowerCase(); // Convert input to lowercase
+    const lowerCaseMessage = message.toLowerCase();
     return keywords.some(keyword => lowerCaseMessage.includes(keyword.toLowerCase())); // Check if any keyword is included
   };
 
-  const lastAssistantMsg = conversation.filter(msg => msg.role === "assistant").slice(-1)[0];
-  if (
-    lastAssistantMsg &&
-    lastAssistantMsg.content.includes("Would you like me to summarise") &&
-    matchesKeyword(message, "yes")
-  ) {
-    setSimplify(true);
-    setConversation([
-      ...conversation,
-      { role: "user", content: message },
-      { role: "assistant", content: "Okay! I will provide my answers in point form or numbered lists to make them easier to understand. Please let me know your next question or request." }
-    ]);
-    setMessage('');
-    return;
-  }
-
-  if (
-    lastAssistantMsg &&
-    lastAssistantMsg.content.includes("Would you like me to summarise") &&
-    matchesKeyword(message, "refusal")
-  ) {
-    setConversation([
-      ...conversation,
-      { role: "user", content: message },
-      { role: "assistant", content: "No problem! I will continue answering your questions as usual. Let me know how I can assist you further." }
-    ]);
-    setMessage('');
-    return;
-  }
+  useEffect(() => {
+    const lastAssistantMsg = conversation.filter(msg => msg.role === "assistant").slice(-1)[0];
+    if (
+      lastAssistantMsg &&
+      lastAssistantMsg.content.includes("Would you like me to summarise")
+    ) {
+      if (matchesKeyword(message, "yes")) {
+        setSimplify(true);
+        setConversation(prev => [
+          ...prev,
+          { role: "user", content: message },
+          { role: "assistant", content: "Okay! I will provide my answers in point form or numbered lists to make them easier to understand. Please let me know your next question or request." }
+        ]);
+        setMessage('');
+      } else if (matchesKeyword(message, "refusal")) {
+        setConversation(prev => [
+          ...prev,
+          { role: "user", content: message },
+          { role: "assistant", content: "No problem! I will continue answering your questions as usual. Let me know how I can assist you further." }
+        ]);
+        setMessage('');
+      }
+    }
+  }, [message, conversation]);
 
   const sendMessage = async (msg) => {
     const userMsg = (typeof msg === "string" ? msg : message).trim();
@@ -142,25 +145,28 @@ You can type your question or select a topic below to get started!`
           { role: "assistant", content: "That's alright, you don't have to share if you feel uncomfortable. If you ever wish to share it, feel free to let me know. How can I assist you further?" }
         ]);
         return;
+      }
+
+      let followUp = "Thank you for sharing. How can I assist you further?";
+      // Check for sight-related condition
+      if (matchesKeyword(userMsg, "sightRelated")) {
+        setSpecialNeeds("visual impairment");
+        setVoiceMode(true);
+        localStorage.setItem('voiceMode', true);
+        setTimeout(() => startListening(), 500);
+        followUp = "Thank you for sharing. Since you mentioned a visual impairment, voice mode has been enabled. Please speak your next message. You can also use CTRL + Spacebar keys to activate the microphone without using";
+      }
+      // Check for hearing-related condition
+      else if (matchesKeyword(userMsg, "hearingRelated")) {
+        setSpecialNeeds("hearing impairment");
+        followUp = "Thank you for sharing. Since you mentioned hearing impairment or deafness, you might find the audio summary feature helpful. You can insert audio files under 25 MB and transcribe the video into text.";
+      }
+      // Check for adhd/dyslexia
+      else if (matchesKeyword(userMsg, "summary")) {
+        setSpecialNeeds("adhd/dyslexia");
+        followUp = "Thank you for sharing. Would you like me to summarise any text or information for you to make it easier to understand?";
       } else if (matchesKeyword(userMsg, "knownConditions")) {
         setSpecialNeeds(userMsg);
-        setAwaitingCondition(false);
-        setMessage('');
-        let followUp = "Thank you for sharing. How can I assist you further?";
-        // Check for ADHD / dyslexic condition
-        if (matchesKeyword(userMsg, "summary")) {
-          followUp = "Thank you for sharing. Would you like me to summarise any text or information for you to make it easier to understand?";
-        }
-        // Check for hearing-related condition
-        else if (matchesKeyword(userMsg, "hearingRelated")) {
-          followUp = "Thank you for sharing. Since you mentioned hearing impairment or deafness, you might find the audio summary feature helpful. You can insert audio files under 25 MB and transcribe the video into text.";
-        }
-        setConversation([
-          ...conversation,
-          { role: "user", content: userMsg },
-          { role: "assistant", content: followUp }
-        ]);
-        return;
       } else {
         // Not a refusal or a known condition, keep prompting
         setMessage('');
@@ -174,7 +180,17 @@ You can type your question or select a topic below to get started!`
         ]);
         return;
       }
+
+      setAwaitingCondition(false);
+      setMessage('');
+      setConversation([
+        ...conversation,
+        { role: "user", content: userMsg },
+        { role: "assistant", content: followUp }
+      ]);
+      return;
     }
+
 
     // Only prompt for condition if the message is condition-related
     if (
@@ -194,7 +210,7 @@ You can type your question or select a topic below to get started!`
     }
 
     // In your repeated prompt logic, after a few failed attempts:
-    if (awaitingCondition && !specialNeeds && !refusedCondition && userMessages.length > 2) {
+    if (awaitingCondition && !specialNeeds && !refusedCondition && conversation.filter(msg => msg.role === "user").length > 2) {
       setConversation([
         ...conversation,
         { role: "user", content: userMsg },
@@ -217,7 +233,8 @@ You can type your question or select a topic below to get started!`
       messages: newConversation,
       specialNeeds,
       refusedCondition,
-      simplify
+      simplify,
+      voiceMode
     });
 
     try {
@@ -228,22 +245,47 @@ You can type your question or select a topic below to get started!`
           messages: newConversation,
           specialNeeds,
           refusedCondition,
-          simplify
+          simplify,
+          voiceMode
         }),
       });
 
       const data = await res.json();
+      console.log("Backend response data:", data);
+
+      if (data.response) {
+        const botResponse = data.response;
+        setConversation([
+          ...newConversation,
+          { role: "assistant", content: botResponse }
+        ]);
+
+        if (voiceMode || data.tts) {
+          speakText(botResponse);
+        }
+      }
 
       if (data.error) {
-        setConversation([
-          ...newConversation,
-          { role: "assistant", content: `Error: ${data.error}` }
-        ]);
-      } else {
-        setConversation([
-          ...newConversation,
-          { role: "assistant", content: data.response }
-        ]);
+        setConversation([...newConversation, { role: "assistant", content: `Error: ${data.error}` }]);
+      } else if (data.response) {
+        setConversation([...newConversation, { role: "assistant", content: data.response }]);
+        if (voiceMode || data.tts) speakText(data.response);
+      }
+
+      if (data.specialNeeds === "visual" && !voiceMode && !isListening) {
+        setSpecialNeeds(data.specialNeeds);
+        localStorage.setItem('specialNeeds', data.specialNeeds);
+
+        // Enable voice mode if backend detected visual impairment
+        if (data.specialNeeds === "visual" && !voiceMode) {
+          setVoiceMode(true);
+          localStorage.setItem('voiceMode', true);
+          // Optionally, auto-start listening:
+          setTimeout(() => startListening(), 500);
+        }
+      }
+      if (typeof data.simplify === "boolean" && data.simplify !== simplify) {
+        setSimplify(data.simplify);
       }
 
       setResponse(data.response || data.error);
@@ -268,22 +310,91 @@ You can type your question or select a topic below to get started!`
     setLoading(false);
   };
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // If space bar is pressed and not focused on a textarea/input
+      if (
+        e.ctrlKey &&
+        e.code === "Space" &&
+        document.activeElement.tagName !== "TEXTAREA" &&
+        document.activeElement.tagName !== "INPUT"
+      ) {
+        e.preventDefault();
+        if (!micCooldown && !isListening && !loading) {
+          startListening();
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [micCooldown, isListening, loading]);
+  const [showChatbot, setShowChatbot] = useState(true);
+
+
   const startListening = () => {
+    if (isListening || loading || micCooldown) return;
+    setMicCooldown(true);
+    setTimeout(() => setMicCooldown(false), 2000); // 2 seconds cooldown
+    setShowChatbot(false);
     if (!('webkitSpeechRecognition' in window)) {
       alert('Speech recognition not supported in this browser.');
       return;
     }
+
+    if (recognitionRef.current) {
+      recognitionRef.current.onresult = null;
+      recognitionRef.current.onerror = null;
+      recognitionRef.current.abort();
+      recognitionRef.current = null;
+    }
+
     const recognition = new window.webkitSpeechRecognition();
     recognition.lang = 'en-US';
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => setIsListening(true);
+    recognition.onend = () => {
+      setIsListening(false);
+      setShowChatbot(true);
+    };
+
     recognition.onresult = (event) => {
-      setMessage(event.results[0][0].transcript);
+      const voiceTranscript = event.results[0][0].transcript
+      setMessage(voiceTranscript);
+      sendMessage(voiceTranscript);
+      setIsListening(false);
+      setShowChatbot(true);
+      recognitionRef.current = null;
     };
+
     recognition.onerror = (event) => {
-      alert('Speech recognition error: ' + event.error);
+      if (event.error !== "aborted") {
+        alert('Speech recognition error: ' + event.error);
+      }
+      setIsListening(false);
+      setShowChatbot(true);
+      recognitionRef.current = null;
     };
+    recognitionRef.current = recognition;
     recognition.start();
+  };
+
+  const stopListening = () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.abort();
+      recognitionRef.current = null;
+    }
+    setIsListening(false);
+    setShowChatbot(true);
+  };
+
+  const handleMicClick = () => {
+    if (isListening) {
+      stopListening();
+    } else {
+      startListening();
+    }
   };
 
   // File Upload
@@ -302,7 +413,7 @@ You can type your question or select a topic below to get started!`
         method: 'POST',
         body: formData,
       });
-      
+
       const data = await res.json();
       console.log("API Response:", data); // Debugging log
 
@@ -345,8 +456,62 @@ You can type your question or select a topic below to get started!`
     setMinutesLoading(false);
   };
 
+  useEffect(() => {
+    // Cleanup function: stop any ongoing speech when component unmounts or window reloads
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+        audioRef.current = null;
+      }
+    };
+  }, []);
+
+  const audioRef = useRef(null);
+
+  const speakText = async (text) => {
+    try {
+      // Stop previous audio if playing
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+        audioRef.current = null;
+      }
+
+      const res = await fetch(`${API_BASE_URL}/tts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }), // Optionally add voice: "onyx"
+      });
+      if (!res.ok) throw new Error('TTS request failed');
+      const audioBlob = await res.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+
+      audioRef.current = audio; // Save reference
+
+      setIsSpeaking(true);
+      audio.onended = () => setIsSpeaking(false);
+      audio.onerror = () => setIsSpeaking(false);
+
+      audio.play();
+    } catch (err) {
+      setIsSpeaking(false);
+      console.error('OpenAI TTS error:', err);
+    }
+  };
+
+  const toggleVoiceMode = () => {
+    const newVoiceMode = !voiceMode;
+    setVoiceMode(newVoiceMode);
+    localStorage.setItem('voiceMode', newVoiceMode); // Persist state across sessions
+  };
+
   return (
+
     <div className="chatbot-container">
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+      </div>
       <h2>NYP SEN Chatbot</h2>
       <div
         ref={chatContainerRef}
@@ -371,6 +536,11 @@ You can type your question or select a topic below to get started!`
           <span className="spinner" /> NYP SEN Chatbot is typing...
         </div>
       )}
+      {isSpeaking && (
+        <div style={{ marginBottom: '10px', color: '#888' }}>
+          🔊 NYP SEN Chatbot is speaking...
+        </div>
+      )}
       {conversation.length === 1 && (
         <div style={{ display: 'flex', gap: '12px', margin: '16px 0' }}>
           {suggestions.map((suggestion, idx) => (
@@ -387,29 +557,49 @@ You can type your question or select a topic below to get started!`
 
       {/* Chat Controls */}
       <div className="chat-controls" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-        <textarea
-          value={message}
-          onChange={e => setMessage(e.target.value)}
-          onKeyDown={e => {
-            if (
-              e.key === 'Enter' &&
-              !e.shiftKey &&
-              !e.ctrlKey &&
-              !loading &&
-              message.trim()
-            ) {
-              sendMessage();
-              setMessage('');
-              e.preventDefault();
-            }
-          }}
-          placeholder="Type your message..."
-          rows={3}
-          style={{ width: '400px', resize: 'vertical' }}
-        />
-        <button onClick={startListening} style={{ width: 55, height: 55, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%' }}>
-          <img src={micIcon} alt="🎤" style={{ width: 24, height: 24 }} />
+        {showChatbot && (
+          <textarea
+            value={message}
+            onChange={e => setMessage(e.target.value)}
+            onKeyDown={e => {
+              if (
+                e.key === 'Enter' &&
+                !e.shiftKey &&
+                !e.ctrlKey &&
+                !loading &&
+                message.trim()
+              ) {
+                sendMessage();
+                setMessage('');
+                e.preventDefault();
+              }
+            }}
+            placeholder="Type your message..."
+            rows={3}
+            style={{ width: '400px', resize: 'vertical' }}
+          />
+        )}
+        <button
+          onClick={handleMicClick}
+          disabled={loading}
+          style={{
+            width: 55,
+            height: 55,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: '50%',
+            border: isListening ? '3px solid #e53935' : '2px solid black',
+            background: isListening ? 'black' : 'white',
+            transition: 'background 0.5s, border 0.5s'
+          }}>
+          <img src={micIcon} alt="🎤" style={{
+            width: 24, height: 24, filter: isListening ? 'invert(0)' : 'invert(1)' // Black icon on white, white icon on black
+          }} />
         </button>
+        {isListening && (
+          <span style={{ color: '#888', marginLeft: 8, }}>Listening...</span>
+        )}
         <button onClick={sendMessage} disabled={loading || !message} style={{ width: 130, height: 50 }}>
           {loading ? 'Sending...' : 'Send'}
         </button>
@@ -463,8 +653,14 @@ You can type your question or select a topic below to get started!`
           )}
         </div>
       )}
+      <button
+        className="voice-mode-btn"
+        onClick={toggleVoiceMode}
+      >
+        {voiceMode ? "Disable Voice Mode" : "Enable Voice Mode"}
+      </button>
     </div>
-  )
+  );
 }
 
 export default App

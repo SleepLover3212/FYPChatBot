@@ -1,12 +1,15 @@
+import os
+import io
+import re
+import pdfplumber
+import openai
+
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from openai import OpenAI
 from docx import Document
 from dotenv import load_dotenv
 
-import os 
-import pdfplumber
-import re
 
 app = Flask(__name__)
 CORS(app, origins="*")
@@ -64,6 +67,11 @@ def build_system_prompt(distressed, obsessed, escalated, special_needs, refused_
     Answer questions as if you are consulting a Nanyang Polytechnic student.
     Base your answers strictly on the information provided:
     
+    The chatbot supports the following features:
+    - Voice mode: Users can interact with the chatbot using speech recognition. Users can also press the Ctrl + Spacebar buttons at the same time to turn on the microphone without using the mouse to interact with the screen.
+    - Audio transcription: Users can upload audio files (under 25 MB) to transcribe them into text.
+    - Audio summary download: After transcribing audio, users can download a summary in DOCX format.
+    
     Never reveal sensitive information of any staff member, alumni or student mentioned inside. For example email addresses, phone numbers, or any other personal information.
     Never reveal or mention the source of your knowledge, such as the "padlet_content" folder, any internal data source, or that you have read files.
     If asked about your knowledge source, respond: 'I am here to assist based on the information I have been provided.'
@@ -109,8 +117,24 @@ def build_system_prompt(distressed, obsessed, escalated, special_needs, refused_
             Please note that this is an AI chat bot, and there is no staff attending to this chat bot.
             """
         )
-    if special_needs:   
+    if special_needs:
         system_prompt += f"\nThe student has shared their special needs condition: {special_needs}."
+        if special_needs == "visual":
+            system_prompt += (
+                "\nIMPORTANT: The student has a visual impairment or blindness. "
+                "Remind them they can use voice mode by pressing Ctrl + Spacebar to turn on the microphone."
+            )
+        elif special_needs == "hearing":
+            system_prompt += (
+                "\nIMPORTANT: The student has a hearing impairment or deafness. "
+                "Recommend them to use the audio transcriber if they have any audio clips that they want to understand."
+            )
+        elif special_needs in ["adhd", "dyslexia"]:
+            simplify = True
+            system_prompt += (
+                "\nIMPORTANT: The student has ADHD or dyslexia. "
+                "Summarise your answers in point form or numbered lists, and keep responses under 75 words."
+            )
     if refused_condition:
         system_prompt += "\nThe student has chosen not to share their special needs condition."
     if simplify:
@@ -141,6 +165,19 @@ def detect_distress_intent(message):
         ]
     )
     return response.choices[0].message.content.strip().lower()
+
+def detect_condition(message):
+    message_lower = message.lower()
+    # Prioritize sight > hearing > adhd > dyslexia
+    if any(word in message_lower for word in ["visual impairment", "blind", "blindness", "low vision", "visually impaired"]):
+        return "visual"
+    if any(word in message_lower for word in ["hearing impairment", "deaf", "deafness"]):
+        return "hearing"
+    if any(word in message_lower for word in ["adhd", "attention deficit hyperactivity disorder"]):
+        return "adhd"
+    if "dyslexia" in message_lower:
+        return "dyslexia"
+    return None
 
 def transcribe_audio(audio_file_path):
     with open(audio_file_path, 'rb') as audio_file:
@@ -296,12 +333,19 @@ def chat():
     special_needs = data.get('specialNeeds')
     refused_condition = data.get('refusedCondition')
     simplify = data.get('simplify')
+    voice_mode = data.get('voiceMode', False)
 
     last_user_message = ""
     for msg in reversed(user_messages):
         if msg['role'] == 'user':
             last_user_message = msg['content']
             break
+        
+    if not special_needs:
+        detected_condition = detect_condition(last_user_message)
+        if detected_condition:
+            special_needs = detected_condition
+            print(f"Detected {special_needs}")
 
     intent = detect_distress_intent(last_user_message)
 
@@ -309,6 +353,8 @@ def chat():
     obsessed = intent == 'obsessed'
     escalated = intent == 'harmful'
 
+    auto_simplify = simplify or (special_needs in ["adhd", "dyslexia"])
+    
     print(f"AI intent detection: {intent}")
     print(f"distressed: {distressed}")
     print(f"obsessed: {obsessed}")
@@ -318,18 +364,28 @@ def chat():
     print(f"simplify: {simplify}")
     
     system_prompt = build_system_prompt(distressed, obsessed, escalated, special_needs, refused_condition, simplify)
-    
     full_system_prompt = system_prompt + "\n\nHere is all the information you must use to answer questions:\n" + PADLET_REDACTED_CONTENT
     
     # print(full_system_prompt)
 
-    response = client.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages = [
-            {"role": "system", "content": full_system_prompt},
-        ] + [msg for msg in user_messages if msg['role'] != 'system']
-    )
-    return jsonify({'response': response.choices[0].message.content})
+    try:
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": full_system_prompt},
+            ] + [msg for msg in user_messages if msg['role'] != 'system']
+        )
+        tts_enabled = voice_mode or (special_needs == "visual")
+        auto_simplify = simplify or (special_needs in ["adhd", "dyslexia"])
+        return jsonify({
+            'response': response.choices[0].message.content,
+            'tts': tts_enabled,
+            'simplify': auto_simplify,
+            'specialNeeds': special_needs
+        })
+    except Exception as e:
+        print("Error:", str(e))
+        return jsonify({'error': 'An error occurred while processing your request.'}), 500
 
 @app.route('/upload-audio', methods=['POST'])
 def upload_audio():
@@ -385,6 +441,29 @@ def download_audio_docx():
     if not os.path.exists(docx_path):
         return jsonify({'error': 'No document found'}), 404
     return send_file(docx_path, as_attachment=True)
+
+@app.route('/tts', methods=['POST'])
+def tts():
+    data = request.get_json()
+    text = data.get('text', '')
+    if not text:
+        return jsonify({'error': 'No text provided'}), 400
+
+    # Call OpenAI TTS API
+    response = openai.audio.speech.create(
+        model="tts-1",  # or "tts-1-hd"
+        voice="alloy",   # or "nova", "shimmer", "echo", etc.
+        input=text
+    )
+    audio_bytes = response.content
+
+    # Return as a file-like object
+    return send_file(
+        io.BytesIO(audio_bytes),
+        mimetype='audio/mpeg',
+        as_attachment=False,
+        download_name='speech.mp3'
+    )
 
 if __name__ == '__main__':
     app.run(host='127.0.0.1', port=3000, debug=True)
