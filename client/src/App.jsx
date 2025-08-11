@@ -369,7 +369,7 @@ You can type your question or select a topic below to get started!`
     };
 
     recognition.onerror = (event) => {
-      if (event.error !== "aborted") {
+      if (event.error !== "aborted" && event.error !== "no-speech") {
         alert('Speech recognition error: ' + event.error);
       }
       setIsListening(false);
